@@ -385,11 +385,19 @@ class Compiler extends Obj {
   }
 
   compileAdd(node, frame) {
-    return this._binOpEmitter(node, frame, ' + ');
+    this._emit('runtime.add(');
+    this.compile(node.left, frame);
+    this._emit(',');
+    this.compile(node.right, frame);
+    this._emit(', env.opts.autoescape)');
   }
 
   compileConcat(node, frame) {
-    return this._binOpEmitter(node, frame, ' + "" + ');
+    this._emit('runtime.concat(');
+    this.compile(node.left, frame);
+    this._emit(',');
+    this.compile(node.right, frame);
+    this._emit(', env.opts.autoescape)');
   }
 
   compileSub(node, frame) {

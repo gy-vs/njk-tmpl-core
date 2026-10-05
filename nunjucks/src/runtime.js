@@ -186,6 +186,47 @@ function copySafeness(dest, target) {
   return target.toString();
 }
 
+// Convert a value to a string as it participates in a concatenation
+// alongside safe content. Safe strings are used verbatim, null/undefined
+// become empty strings (like Jinja's Undefined), and anything else is
+// escaped when autoescaping so that mixing a safe fragment with user input
+// can't bypass autoescaping.
+function concatValue(val, autoescape) {
+  if (val === null || val === undefined) {
+    return '';
+  }
+  if (val instanceof SafeString) {
+    return val.val;
+  }
+  return autoescape ? lib.escape(val.toString()) : val.toString();
+}
+
+// Implement Jinja's string concatenation for the `~` operator. If either
+// operand is marked safe, unsafe operands are escaped (when autoescaping)
+// and the result is marked safe as a whole; otherwise plain JavaScript
+// concatenation is used. Undefined values always concatenate as empty
+// strings.
+function concat(left, right, autoescape) {
+  if (left instanceof SafeString || right instanceof SafeString) {
+    return new SafeString(
+      concatValue(left, autoescape) + concatValue(right, autoescape)
+    );
+  }
+  return (left === undefined ? '' : left) + '' +
+    (right === undefined ? '' : right);
+}
+
+// Implement Jinja's `+` operator: numbers add as in JavaScript, but
+// concatenation with safe strings follows the same rules as `~`.
+function add(left, right, autoescape) {
+  if (left instanceof SafeString || right instanceof SafeString) {
+    return new SafeString(
+      concatValue(left, autoescape) + concatValue(right, autoescape)
+    );
+  }
+  return left + right;
+}
+
 function markSafe(val) {
   var type = typeof val;
 
@@ -373,6 +414,8 @@ module.exports = {
   SafeString: SafeString,
   copySafeness: copySafeness,
   markSafe: markSafe,
+  concat: concat,
+  add: add,
   asyncEach: asyncEach,
   asyncAll: asyncAll,
   inOperator: lib.inOperator,

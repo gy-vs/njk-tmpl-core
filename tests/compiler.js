@@ -873,6 +873,102 @@
       finish(done);
     });
 
+    it('should keep safe strings safe when concatenated', function(done) {
+      // Safe fragments keep their markup while plain strings are escaped,
+      // and the result as a whole is treated as safe (jinja2 semantics).
+      equal(
+        '{{ (badge | safe) ~ user.name }}',
+        { badge: '<b>VIP</b>', user: { name: 'Tom' } },
+        { autoescape: true },
+        '<b>VIP</b>Tom');
+
+      equal(
+        '{{ ("<b>VIP</b>" | safe) ~ " & co" }}',
+        null,
+        { autoescape: true },
+        '<b>VIP</b> &amp; co');
+
+      // The same applies to the + operator
+      equal(
+        '{{ ("<b>VIP</b>" | safe) + " & co" }}',
+        null,
+        { autoescape: true },
+        '<b>VIP</b> &amp; co');
+
+      equal(
+        '{{ 3 + ("<b>VIP</b>" | safe) }}',
+        null,
+        { autoescape: true },
+        '3<b>VIP</b>');
+
+      // Macros return safe markup and must stay safe when concatenated
+      equal(
+        '{% macro icon(n) %}<i class="{{ n }}"></i>{% endmacro %}' +
+        '{{ icon("ok") ~ " done" }}',
+        null,
+        { autoescape: true },
+        '<i class="ok"></i> done');
+
+      // A captured (set) safe concatenation stays safe on output
+      equal(
+        '{% set label = ("<b>VIP</b>" | safe) ~ " Tom" %}{{ label }}',
+        null,
+        { autoescape: true },
+        '<b>VIP</b> Tom');
+
+      // caller() output concatenated inside a macro behaves the same
+      equal(
+        '{% macro box() %}[{{ caller() ~ "<" }}]{% endmacro %}' +
+        '{% call box() %}<em>x</em>{% endcall %}',
+        null,
+        { autoescape: true },
+        '[<em>x</em>&lt;]');
+
+      // Plain concatenations are still escaped once on output
+      equal(
+        '{{ "<a>" ~ "<b>" }}',
+        null,
+        { autoescape: true },
+        '&lt;a&gt;&lt;b&gt;');
+
+      // With autoescape off, nothing in the concatenation is escaped
+      equal(
+        '{{ ("<b>VIP</b>" | safe) ~ " & co" }}',
+        null,
+        { autoescape: false },
+        '<b>VIP</b> & co');
+
+      finish(done);
+    });
+
+    it('should concatenate undefined values as empty strings', function(done) {
+      equal(
+        '{{ "Hi " ~ user.nickname ~ "!" }}',
+        { user: {} },
+        { autoescape: true },
+        'Hi !');
+
+      equal(
+        '{{ user.nickname ~ "" }}',
+        { user: {} },
+        { autoescape: true },
+        '');
+
+      equal(
+        '{{ (user.nickname ~ "") | length }}',
+        { user: {} },
+        { autoescape: true },
+        '0');
+
+      equal(
+        '{{ "x" ~ missing ~ "y" }}',
+        null,
+        { autoescape: false },
+        'xy');
+
+      finish(done);
+    });
+
     it('should compile macros', function(done) {
       equal(
         '{% macro foo() %}This is a macro{% endmacro %}' +

@@ -462,6 +462,59 @@
       finish(done);
     });
 
+    it('join with autoescape keeps safe strings safe', function(done) {
+      // Safe items keep their markup, unsafe items are escaped
+      equal(
+        '{{ items | join(" ") }}',
+        { items: [r.markSafe('<b>VIP</b>'), '<x>'] },
+        { autoescape: true },
+        '<b>VIP</b> &lt;x&gt;');
+
+      // A plain-string separator is escaped while the safe items survive
+      equal(
+        '{{ items | join("<br>") }}',
+        { items: [r.markSafe('<b>VIP</b>'), r.markSafe('<b>VIP</b>')] },
+        { autoescape: true },
+        '<b>VIP</b>&lt;br&gt;<b>VIP</b>');
+
+      // Everything unsafe is still escaped once
+      equal(
+        '{{ items | join(",") }}',
+        { items: ['<a>', '<b>'] },
+        { autoescape: true },
+        '&lt;a&gt;,&lt;b&gt;');
+
+      // A safe separator is kept verbatim
+      equal(
+        '{{ items | join(sep) }}',
+        { items: ['<x>', '<y>'], sep: r.markSafe('<b>VIP</b>') },
+        { autoescape: true },
+        '&lt;x&gt;<b>VIP</b>&lt;y&gt;');
+
+      // Numbers and null/undefined are stringified and empty
+      equal(
+        '{{ items | join(",") }}',
+        { items: [1, null, undefined, 2] },
+        { autoescape: true },
+        '1,,,2');
+
+      // With autoescape off nothing is escaped
+      equal(
+        '{{ items | join("<br>") }}',
+        { items: [r.markSafe('<b>VIP</b>'), '<x>'] },
+        { autoescape: false },
+        '<b>VIP</b><br><x>');
+
+      // Safe items in an autoescape-off environment still concatenate raw
+      equal(
+        '{{ items | join(" ") }}',
+        { items: [r.markSafe('<b>VIP</b>'), '<x>'] },
+        { autoescape: false },
+        '<b>VIP</b> <x>');
+
+      finish(done);
+    });
+
     it('last', function(done) {
       equal('{{ [1,2,3] | last }}', '3');
       finish(done);

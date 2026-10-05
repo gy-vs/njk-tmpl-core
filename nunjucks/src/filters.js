@@ -197,6 +197,32 @@ function join(arr, del, attr) {
     arr = lib.map(arr, (v) => v[attr]);
   }
 
+  // When autoescaping (or when any part is already marked safe), keep the
+  // safe fragments verbatim, escape the rest, and return the whole join as
+  // a SafeString so it isn't escaped again on output.
+  const autoescape = !!this.env.opts.autoescape;
+  const isSafe = (v) => v instanceof r.SafeString;
+  if (lib.isArray(arr)) {
+    let hasSafe = isSafe(del);
+    if (!autoescape && !hasSafe) {
+      for (let i = 0; i < arr.length; i++) {
+        if (isSafe(arr[i])) {
+          hasSafe = true;
+          break;
+        }
+      }
+    }
+    if (autoescape || hasSafe) {
+      const toStr = (v) => {
+        if (v === null || v === undefined) {
+          return '';
+        }
+        return (autoescape && !isSafe(v)) ? lib.escape(v.toString()) : v.toString();
+      };
+      return r.markSafe(arr.map(toStr).join(toStr(del)));
+    }
+  }
+
   return arr.join(del);
 }
 
