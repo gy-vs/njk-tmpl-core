@@ -462,6 +462,46 @@
       finish(done);
     });
 
+    it('join with safe strings and autoescape on', function(done) {
+      equal('{{ ["<b>VIP</b>" | safe, "<x>"] | join(" ") }}',
+        {},
+        { autoescape: true },
+        '<b>VIP</b> &lt;x&gt;');
+
+      equal('{{ ["<b>VIP</b>" | safe, "<b>VIP</b>" | safe] | join("<br>") }}',
+        {},
+        { autoescape: true },
+        '<b>VIP</b>&lt;br&gt;<b>VIP</b>');
+
+      equal('{{ ["a", "b"] | join("<br>" | safe) }}',
+        {},
+        { autoescape: true },
+        'a<br>b');
+
+      equal('{{ items | join(",") }}',
+        {
+          items: ['f<o', 'b&r']
+        },
+        { autoescape: true },
+        'f&lt;o,b&amp;r');
+      finish(done);
+    });
+
+    it('join with safe strings and autoescape off', function(done) {
+      equal('{{ ["<b>VIP</b>" | safe, "<x>"] | join(" ") }}',
+        {},
+        { autoescape: false },
+        '<b>VIP</b> <x>');
+
+      equal('{{ items | join(",") }}',
+        {
+          items: ['f<o', 'b&r']
+        },
+        { autoescape: false },
+        'f<o,b&r');
+      finish(done);
+    });
+
     it('last', function(done) {
       equal('{{ [1,2,3] | last }}', '3');
       finish(done);

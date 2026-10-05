@@ -216,6 +216,45 @@ function suppressValue(val, autoescape) {
   return val;
 }
 
+// Converts one operand of a string concatenation to a string.
+// null/undefined become empty strings, SafeStrings stay raw and
+// everything else is escaped when `escape` is true.
+function concatOperand(val, escape) {
+  if (val === undefined || val === null) {
+    return '';
+  }
+
+  if (val instanceof SafeString) {
+    return val.val;
+  }
+
+  val = val.toString();
+  return escape ? lib.escape(val) : val;
+}
+
+// Concatenates two values as strings (the `~` operator). When either
+// side is a SafeString the other side is escaped (if autoescape is on)
+// and the result is itself a SafeString, so already-safe content is
+// not escaped again on output.
+function concat(left, right, autoescape) {
+  const isSafe = left instanceof SafeString || right instanceof SafeString;
+  const res = concatOperand(left, isSafe && autoescape) +
+    concatOperand(right, isSafe && autoescape);
+
+  return isSafe ? new SafeString(res) : res;
+}
+
+// The `+` operator keeps normal JavaScript semantics (numbers add,
+// plain strings concatenate) unless a SafeString is involved, in
+// which case it concatenates like `~`.
+function add(left, right, autoescape) {
+  if (left instanceof SafeString || right instanceof SafeString) {
+    return concat(left, right, autoescape);
+  }
+
+  return left + right;
+}
+
 function ensureDefined(val, lineno, colno) {
   if (val === null || val === undefined) {
     throw new lib.TemplateError(
@@ -363,6 +402,8 @@ module.exports = {
   makeKeywordArgs: makeKeywordArgs,
   numArgs: numArgs,
   suppressValue: suppressValue,
+  concat: concat,
+  add: add,
   ensureDefined: ensureDefined,
   memberLookup: memberLookup,
   contextOrFrameLookup: contextOrFrameLookup,

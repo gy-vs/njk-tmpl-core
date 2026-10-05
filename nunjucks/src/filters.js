@@ -197,7 +197,33 @@ function join(arr, del, attr) {
     arr = lib.map(arr, (v) => v[attr]);
   }
 
-  return arr.join(del);
+  const env = this && this.env;
+  const autoescape = env && env.opts && env.opts.autoescape;
+
+  if (!autoescape || !lib.isArray(arr)) {
+    return arr.join(del);
+  }
+
+  // With autoescape on, behave like Jinja2: already-safe values stay
+  // raw, everything else (including a non-safe delimiter) is escaped,
+  // and the joined result is marked safe so it is not escaped again.
+  const parts = lib.map(arr, (v) => {
+    if (v === undefined || v === null) {
+      return '';
+    }
+
+    if (v instanceof r.SafeString) {
+      return v.toString();
+    }
+
+    return lib.escape(v.toString());
+  });
+
+  const delim = (del instanceof r.SafeString) ?
+    del.toString() :
+    lib.escape(del.toString());
+
+  return new r.SafeString(parts.join(delim));
 }
 
 exports.join = join;

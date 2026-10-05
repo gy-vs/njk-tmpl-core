@@ -873,6 +873,77 @@
       finish(done);
     });
 
+    it('should keep safe strings raw in concatenations', function(done) {
+      equal('{{ ("<b>" | safe) ~ "<x>" }}',
+        {},
+        { autoescape: true },
+        '<b>&lt;x&gt;');
+      equal('{{ "<x>" ~ ("<b>" | safe) }}',
+        {},
+        { autoescape: true },
+        '&lt;x&gt;<b>');
+      equal('{{ ("<b>" | safe) ~ ("<i>" | safe) }}',
+        {},
+        { autoescape: true },
+        '<b><i>');
+      equal('{{ ("<b>" | safe) + " & co" }}',
+        {},
+        { autoescape: true },
+        '<b> &amp; co');
+      equal('{% set s = ("<b>" | safe) ~ " " ~ name %}{{ s }}',
+        { name: 'T<m' },
+        { autoescape: true },
+        '<b> T&lt;m');
+      finish(done);
+    });
+
+    it('should still escape plain strings in concatenations', function(done) {
+      equal('{{ "<a>" ~ "<b>" }}',
+        {},
+        { autoescape: true },
+        '&lt;a&gt;&lt;b&gt;');
+      equal('{{ "<a>" + "<b>" }}',
+        {},
+        { autoescape: true },
+        '&lt;a&gt;&lt;b&gt;');
+      equal('{{ ("<b>" | safe) ~ "<x>" }}',
+        {},
+        { autoescape: false },
+        '<b><x>');
+      finish(done);
+    });
+
+    it('should treat undefined as an empty string in concatenations', function(done) {
+      equal('{{ "Hi " ~ missing ~ "!" }}', 'Hi !');
+      equal('{{ missing ~ "x" }}', 'x');
+      equal('{{ ("" ~ missing) | length }}', '0');
+      finish(done);
+    });
+
+    it('should not escape macro or caller output when concatenated', function(done) {
+      equal(
+        '{% macro icon(n) %}<i class="{{ n }}"></i>{% endmacro %}' +
+        '{{ icon("ok") ~ " 已完成" }}',
+        {},
+        { autoescape: true },
+        '<i class="ok"></i> 已完成');
+      equal(
+        '{% macro wrap() %}[{{ caller() ~ "<" }}]{% endmacro %}' +
+        '{% call wrap() %}<em>x</em>{% endcall %}',
+        {},
+        { autoescape: true },
+        '[<em>x</em>&lt;]');
+      finish(done);
+    });
+
+    it('should keep numeric addition and plain string addition intact', function(done) {
+      equal('{{ 1 + 2 }}', '3');
+      equal('{{ 1.5 + 2.25 }}', '3.75');
+      equal('{{ "a" + "b" }}', 'ab');
+      equal('{{ 1 + "a" }}', '1a');
+      finish(done);
+    });
+
     it('should compile macros', function(done) {
       equal(
         '{% macro foo() %}This is a macro{% endmacro %}' +
